@@ -23,7 +23,7 @@ export type QuoteProvider = {
 
 export class ProviderError extends Error {
   public readonly provider: Quote["source"];
-  public readonly cause?: unknown;
+  override cause?: unknown;
 
   constructor(
     message: string,
