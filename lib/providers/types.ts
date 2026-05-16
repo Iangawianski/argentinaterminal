@@ -22,12 +22,17 @@ export type QuoteProvider = {
 };
 
 export class ProviderError extends Error {
+  public readonly provider: Quote["source"];
+  public readonly cause?: unknown;
+
   constructor(
     message: string,
-    public readonly provider: Quote["source"],
-    public readonly cause?: unknown,
+    provider: Quote["source"],
+    cause?: unknown,
   ) {
     super(message);
     this.name = "ProviderError";
+    this.provider = provider;
+    this.cause = cause;
   }
 }
