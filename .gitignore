@@ -1,0 +1,61 @@
+# Next.js
+/.next/
+/out/
+/build/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+next-env.d.ts
+
+# Test
+coverage/
+
+# Editor
+.vscode/
+.idea/
+
+# Env
+.env*.local
+.env.production
+
+# Vercel
+.vercel
+
+# Paperclip heartbeat artifacts (workspace-only, never published)
+.allissues.json
+.comments.json
+.ctx.json
+.docs.json
+.hb.json
+.headers.txt
+.inbox.json
+.interactions.json
+.interactions_fresh.json
+.issue1.json
+.issues.json
+.me.json
+.arg1_done_comment.json
+.phase1_create.json
+arg1_interaction.json
+arg1_patch.json
+arg1_plan_body.md
+arg1_plan_put.json
+arg1_review_comment.md
+pp_hb.sh
+
+# Additional Paperclip artifacts from later runs
+all_issues.json
+arg5_hb_resp.json
+arg6.json
+arg6_assign_resp.json
+arg6_checkout_resp.json
+arg6_hc.json
+arg8_cancel_resp.json
+arg9_block_resp.json
+f1_fu_2_resp.json
+run9.json
+runs.json

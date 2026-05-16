@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg: 0 0% 100%;
+    --fg: 220 9% 13%;
+    --muted: 220 14% 96%;
+    --muted-fg: 220 9% 46%;
+    --border: 220 13% 91%;
+    --accent: 217 91% 60%;
+    --positive: 142 71% 45%;
+    --negative: 0 84% 60%;
+  }
+
+  .dark {
+    --bg: 220 14% 7%;
+    --fg: 210 20% 96%;
+    --muted: 220 9% 13%;
+    --muted-fg: 220 9% 60%;
+    --border: 220 9% 18%;
+    --accent: 217 91% 60%;
+    --positive: 142 71% 50%;
+    --negative: 0 84% 65%;
+  }
+
+  html,
+  body {
+    background-color: hsl(var(--bg));
+    color: hsl(var(--fg));
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+
+  *,
+  *::before,
+  *::after {
+    border-color: hsl(var(--border));
+  }
+}
+
+@layer components {
+  .surface {
+    background-color: hsl(var(--muted));
+  }
+  .ring-accent {
+    box-shadow: 0 0 0 1px hsl(var(--accent) / 0.6);
+  }
+}
+
+/* cmdk overrides — minimal, financial terminal feel */
+[cmdk-root] {
+  width: 100%;
+  background: hsl(var(--bg));
+  color: hsl(var(--fg));
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--border));
+  overflow: hidden;
+}
+[cmdk-input] {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  color: inherit;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+[cmdk-list] {
+  max-height: 320px;
+  overflow: auto;
+  padding: 0.25rem;
+}
+[cmdk-item] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+[cmdk-item][data-selected="true"] {
+  background: hsl(var(--muted));
+}
+[cmdk-empty] {
+  padding: 1rem;
+  color: hsl(var(--muted-fg));
+  font-size: 0.9rem;
+}
