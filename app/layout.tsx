@@ -1,31 +1,32 @@
-import type { Metadata } from "next";
-import { ThemeProvider } from "@/components/theme-provider";
-import { CommandPaletteRoot } from "@/components/command-palette";
-import { TopBar } from "@/components/top-bar";
 import "./globals.css";
 
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+
+import { Providers } from "@/components/providers";
+import { Topbar } from "@/components/topbar";
+import { CommandPalette } from "@/components/command-palette";
+
 export const metadata: Metadata = {
-  title: "ArgentinaTerminal",
+  title: {
+    default: "ArgentinaTerminal",
+    template: "%s · ArgentinaTerminal",
+  },
   description:
-    "Terminal financiera open-source para el inversor argentino. CEDEARs, bonos hard-dollar, FX MEP/CCL, macro local — keyboard-first.",
+    "Terminal abierta para el mercado argentino: acciones, CEDEARs, bonos, FX y macro en un solo lugar.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es-AR" suppressHydrationWarning>
-      <body>
-        <ThemeProvider>
-          <CommandPaletteRoot>
-            <div className="min-h-screen flex flex-col">
-              <TopBar />
-              <main className="flex-1">{children}</main>
-            </div>
-          </CommandPaletteRoot>
-        </ThemeProvider>
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        <Providers>
+          <div className="flex min-h-screen flex-col">
+            <Topbar />
+            <main className="flex-1">{children}</main>
+          </div>
+          <CommandPalette />
+        </Providers>
       </body>
     </html>
   );

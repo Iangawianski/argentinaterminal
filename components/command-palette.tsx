@@ -1,5 +1,8 @@
 "use client";
 
+import { Command } from "cmdk";
+import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   createContext,
   useCallback,
@@ -7,143 +10,280 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
-import { Command } from "cmdk";
-import { useRouter } from "next/navigation";
-import { SYMBOL_CATALOG, type SymbolKind } from "@/lib/catalog";
-import { messages } from "@/lib/messages/es-AR";
+import {
+  Activity,
+  Banknote,
+  Compass,
+  DollarSign,
+  LineChart,
+  Moon,
+  Sun,
+  TrendingUp,
+} from "lucide-react";
 
-type PaletteCtx = {
-  open: boolean;
-  setOpen: (open: boolean) => void;
-};
+import { BONDS } from "@/lib/bonds/cashflows";
+import { FX_KEYS, FX_LABELS, type FxKey } from "@/lib/fx";
+import { INSTRUMENTS } from "@/lib/instruments";
 
-const Ctx = createContext<PaletteCtx | null>(null);
+interface CommandPaletteContextValue {
+  isOpen: boolean;
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
+}
 
-export function CommandPaletteRoot({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  const router = useRouter();
+const CommandPaletteContext = createContext<CommandPaletteContextValue | null>(null);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      } else if (e.key === "Escape") {
-        setOpen(false);
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+export function CommandPaletteProvider({ children }: { children: ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false);
 
-  const navigate = useCallback(
-    (symbol: string) => {
-      router.push(`/ticker/${symbol.toLowerCase()}`);
-      setOpen(false);
-    },
-    [router],
+  const value = useMemo<CommandPaletteContextValue>(
+    () => ({
+      isOpen,
+      open: () => setIsOpen(true),
+      close: () => setIsOpen(false),
+      toggle: () => setIsOpen((v) => !v),
+    }),
+    [isOpen]
   );
 
-  const ctx = useMemo(() => ({ open, setOpen }), [open]);
-
-  const grouped = useMemo(() => groupByKind(), []);
-
-  return (
-    <Ctx.Provider value={ctx}>
-      {children}
-      {open ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Command palette"
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 sm:pt-32"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="w-full max-w-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Command label="Buscar ticker">
-              <Command.Input
-                autoFocus
-                placeholder={messages.palette.placeholder}
-              />
-              <Command.List>
-                <Command.Empty>{messages.palette.empty}</Command.Empty>
-                {grouped.map(([kind, items]) => (
-                  <Command.Group key={kind} heading={labelFor(kind)}>
-                    {items.map((s) => (
-                      <Command.Item
-                        key={s.symbol}
-                        value={`${s.symbol} ${s.name}`}
-                        onSelect={() => navigate(s.symbol)}
-                      >
-                        <span className="font-mono">{s.symbol}</span>
-                        <span className="text-xs text-[hsl(var(--muted-fg))]">
-                          {s.name}
-                        </span>
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                ))}
-              </Command.List>
-            </Command>
-          </div>
-        </div>
-      ) : null}
-    </Ctx.Provider>
-  );
+  return <CommandPaletteContext.Provider value={value}>{children}</CommandPaletteContext.Provider>;
 }
 
-function groupByKind(): Array<[SymbolKind, typeof SYMBOL_CATALOG[number][]]> {
-  const buckets = new Map<SymbolKind, typeof SYMBOL_CATALOG[number][]>();
-  for (const s of SYMBOL_CATALOG) {
-    const arr = buckets.get(s.kind) ?? [];
-    arr.push(s);
-    buckets.set(s.kind, arr);
-  }
-  const order: SymbolKind[] = ["stock", "cedear", "bond", "benchmark"];
-  return order
-    .filter((k) => buckets.has(k))
-    .map((k) => [k, buckets.get(k)!] as const);
-}
-
-function labelFor(kind: SymbolKind): string {
-  switch (kind) {
-    case "stock":
-      return messages.palette.sections.stocks;
-    case "cedear":
-      return messages.palette.sections.cedears;
-    case "bond":
-      return messages.palette.sections.bonds;
-    case "benchmark":
-      return messages.palette.sections.benchmarks;
-  }
-}
-
-export function usePalette(): PaletteCtx {
-  const ctx = useContext(Ctx);
+export function useCommandPalette(): CommandPaletteContextValue {
+  const ctx = useContext(CommandPaletteContext);
   if (!ctx) {
-    throw new Error("usePalette must be used inside CommandPaletteRoot");
+    throw new Error("useCommandPalette must be used inside <CommandPaletteProvider>");
   }
   return ctx;
 }
 
-export function PaletteTrigger() {
-  const { setOpen } = usePalette();
+const FX_KEY_HINTS: Record<FxKey, string> = {
+  oficial: "Tipo de cambio minorista BNA",
+  mayorista: "Interbancario A3500",
+  blue: "Informal de efectivo",
+  mep: "AL30 / AL30D — bolsa local",
+  ccl: "Contado con liquidación",
+};
+
+export function CommandPalette() {
+  const router = useRouter();
+  const { setTheme } = useTheme();
+  const ctx = useContext(CommandPaletteContext);
+
+  const setOpen = useCallback(
+    (v: boolean) => {
+      if (!ctx) return;
+      if (v) ctx.open();
+      else ctx.close();
+    },
+    [ctx]
+  );
+
+  useEffect(() => {
+    if (!ctx) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        ctx!.toggle();
+      } else if (e.key === "Escape") {
+        ctx!.close();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [ctx]);
+
+  if (!ctx) return null;
+
+  const goto = (href: string) => {
+    setOpen(false);
+    router.push(href);
+  };
+
+  const groupHeadingClass =
+    "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground";
+  const itemClass =
+    "flex cursor-pointer items-center justify-between gap-2 rounded-md px-3 py-2 text-foreground aria-selected:bg-muted";
+
   return (
-    <button
-      type="button"
-      onClick={() => setOpen(true)}
-      className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs text-[hsl(var(--muted-fg))] hover:surface"
+    <Command.Dialog
+      open={ctx.isOpen}
+      onOpenChange={setOpen}
+      label="Command palette"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/30 p-4 backdrop-blur-sm data-[state=closed]:hidden"
     >
-      <span>{messages.topBar.paletteHint}</span>
-      <kbd className="font-mono text-[10px]">Ctrl K</kbd>
-    </button>
+      <div className="mt-24 w-full max-w-xl overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
+        <Command label="Command menu" className="flex flex-col">
+          <div className="border-b border-border px-3 py-2">
+            <Command.Input
+              autoFocus
+              placeholder="Buscar ticker, FX o comando…"
+              className="w-full bg-transparent py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+          <Command.List className="max-h-80 overflow-y-auto p-2 text-sm">
+            <Command.Empty className="px-3 py-6 text-center text-sm text-muted-foreground">
+              Sin resultados.
+            </Command.Empty>
+
+            <Command.Group heading="Tickers" className={groupHeadingClass}>
+              {INSTRUMENTS.map((inst) => (
+                <Command.Item
+                  key={inst.symbol}
+                  value={`${inst.symbol} ${inst.name}`}
+                  onSelect={() => goto(`/ticker/${inst.symbol}`)}
+                  className={itemClass}
+                >
+                  <span className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    <span className="font-mono text-xs font-semibold">{inst.symbol}</span>
+                    <span className="text-muted-foreground">{inst.name}</span>
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {inst.kind === "stock"
+                      ? "Acción"
+                      : inst.kind === "cedear"
+                        ? "CEDEAR"
+                        : inst.kind === "bond"
+                          ? "Bono"
+                          : "FX"}
+                  </span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+
+            <Command.Group heading="Dólar" className={groupHeadingClass}>
+              <Command.Item
+                value="fx dashboard tablero dolares"
+                onSelect={() => goto("/fx")}
+                className={itemClass}
+              >
+                <span className="flex items-center gap-2">
+                  <Banknote className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Ir al tablero FX</span>
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  /fx
+                </span>
+              </Command.Item>
+              {FX_KEYS.map((k) => (
+                <Command.Item
+                  key={k}
+                  value={`dolar ${k} ${FX_LABELS[k]}`}
+                  onSelect={() => goto(`/fx#${k}`)}
+                  className={itemClass}
+                >
+                  <span className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    <span>Ver dólar {FX_LABELS[k]}</span>
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {FX_KEY_HINTS[k]}
+                  </span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+
+            <Command.Group heading="Bonos" className={groupHeadingClass}>
+              <Command.Item
+                value="bonos panel soberanos tabla"
+                onSelect={() => goto("/bonos")}
+                className={itemClass}
+              >
+                <span className="flex items-center gap-2">
+                  <LineChart className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Ir al panel de bonos</span>
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  /bonos
+                </span>
+              </Command.Item>
+              <Command.Item
+                value="curva soberana yield hard dollar"
+                onSelect={() => goto("/bonos#curva")}
+                className={itemClass}
+              >
+                <span className="flex items-center gap-2">
+                  <LineChart className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Ver curva soberana</span>
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  TIR vs. duration
+                </span>
+              </Command.Item>
+              <Command.Item
+                value="riesgo pais embi ambito"
+                onSelect={() => goto("/bonos#riesgo")}
+                className={itemClass}
+              >
+                <span className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Ver riesgo país</span>
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  EMBI+ Argentina (Ámbito)
+                </span>
+              </Command.Item>
+              {BONDS.map((bond) => (
+                <Command.Item
+                  key={bond.symbol}
+                  value={`bono ${bond.symbol} ${bond.name}`}
+                  onSelect={() => goto(`/ticker/${bond.symbol}`)}
+                  className={itemClass}
+                >
+                  <span className="flex items-center gap-2">
+                    <Banknote className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    <span className="font-mono text-xs font-semibold">{bond.symbol}</span>
+                    <span className="text-muted-foreground">{bond.name}</span>
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {bond.law === "AR" ? "Ley AR" : "Ley NY"}
+                  </span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+
+            <Command.Group heading="Navegación" className={groupHeadingClass}>
+              <Command.Item onSelect={() => goto("/")} className={itemClass}>
+                <span className="flex items-center gap-2">
+                  <Compass className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Ir al inicio</span>
+                </span>
+              </Command.Item>
+            </Command.Group>
+
+            <Command.Group heading="Tema" className={groupHeadingClass}>
+              <Command.Item
+                onSelect={() => {
+                  setTheme("light");
+                  setOpen(false);
+                }}
+                className={itemClass}
+              >
+                <span className="flex items-center gap-2">
+                  <Sun className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Tema claro</span>
+                </span>
+              </Command.Item>
+              <Command.Item
+                onSelect={() => {
+                  setTheme("dark");
+                  setOpen(false);
+                }}
+                className={itemClass}
+              >
+                <span className="flex items-center gap-2">
+                  <Moon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Tema oscuro</span>
+                </span>
+              </Command.Item>
+            </Command.Group>
+          </Command.List>
+        </Command>
+      </div>
+    </Command.Dialog>
   );
 }

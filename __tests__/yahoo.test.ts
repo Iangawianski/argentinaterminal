@@ -57,7 +57,8 @@ describe("yahoo provider", () => {
   it("falls back to chartPreviousClose when previousClose is missing", async () => {
     const provider = createYahooProvider(async () => {
       const fx = ggalFixture();
-      delete fx.chart.result[0]!.meta.previousClose;
+      delete (fx.chart.result[0]!.meta as Record<string, unknown>)
+        .previousClose;
       return fx;
     });
     const quote = await provider.fetchQuote("GGAL");
@@ -83,7 +84,8 @@ describe("yahoo provider", () => {
   it("throws ProviderError when price field is missing", async () => {
     const provider = createYahooProvider(async () => {
       const fx = ggalFixture();
-      delete fx.chart.result[0]!.meta.regularMarketPrice;
+      delete (fx.chart.result[0]!.meta as Record<string, unknown>)
+        .regularMarketPrice;
       return fx;
     });
     await expect(provider.fetchQuote("GGAL")).rejects.toBeInstanceOf(
