@@ -6,6 +6,11 @@ import { computeBondMath } from "@/lib/bonds/math";
 import type { BondQuote } from "@/lib/bonds/quote-types";
 import type { BondMath } from "@/lib/bonds/types";
 import { CEDEARS, computeParity } from "@/lib/cedears";
+import { leaderPanel } from "@/lib/equities/catalog";
+import {
+  getEquitiesSnapshot,
+  type EquitySnapshot,
+} from "@/lib/equities/quotes";
 import { getDefaultFxProvider, type FxQuote } from "@/lib/fx";
 import { getDefaultEmbiProvider, type RiesgoPais } from "@/lib/macro/embi";
 import { fetchNews, type NewsItem } from "@/lib/news/rss";
@@ -49,12 +54,13 @@ const TAG_LABEL: Record<NewsItem["tag"], string> = {
 };
 
 export async function Launchpad() {
-  const [bonds, embi, cedears, fx, news] = await Promise.all([
+  const [bonds, embi, cedears, fx, news, equities] = await Promise.all([
     loadBonds(),
     loadEmbi(),
     loadCedears(),
     loadFx(),
     loadNews(),
+    loadEquities(),
   ]);
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
@@ -75,6 +81,7 @@ export async function Launchpad() {
         <FxPanel fx={fx} />
         <CedearsPanel cedears={cedears} />
         <NewsPanel news={news} />
+        <EquitiesPanel equities={equities} />
       </div>
     </section>
   );
@@ -268,6 +275,72 @@ function CedearsPanel({ cedears }: { cedears: CedearRow[] }) {
   );
 }
 
+function EquitiesPanel({ equities }: { equities: EquitySnapshot[] }) {
+  const withChange = equities.filter((s) => s.dayChangePct !== null);
+  const sortedDesc = withChange
+    .slice()
+    .sort((a, b) => (b.dayChangePct ?? 0) - (a.dayChangePct ?? 0));
+  const up = sortedDesc.slice(0, 3).filter((s) => (s.dayChangePct ?? 0) > 0);
+  const down = sortedDesc
+    .slice(-3)
+    .reverse()
+    .filter((s) => (s.dayChangePct ?? 0) < 0);
+  return (
+    <Panel title="Acciones · top movers" href="/acciones">
+      {up.length === 0 && down.length === 0 ? (
+        <EmptyRow label="Acciones sin movimientos publicados" />
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <MoversList title="Subas" items={up} tone="positive" />
+          <MoversList title="Bajas" items={down} tone="negative" />
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function MoversList({
+  title,
+  items,
+  tone,
+}: {
+  title: string;
+  items: EquitySnapshot[];
+  tone: "positive" | "negative";
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-[10px] uppercase tracking-wider text-[hsl(var(--muted-fg))]">
+        {title}
+      </p>
+      {items.length === 0 ? (
+        <p className="text-xs text-[hsl(var(--muted-fg))]">—</p>
+      ) : (
+        <ul className="space-y-1 text-xs">
+          {items.map((s) => (
+            <li key={s.symbol} className="flex items-baseline justify-between gap-2">
+              <Link
+                href={`/ticker/${s.symbol.toLowerCase()}`}
+                className="font-mono hover:underline"
+              >
+                {s.symbol}
+              </Link>
+              <span
+                className="font-mono tabular-nums"
+                style={{ color: `hsl(var(--${tone}))` }}
+              >
+                {s.dayChangePct !== null
+                  ? formatPct((s.dayChangePct ?? 0) * 100)
+                  : "—"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function NewsPanel({ news }: { news: NewsItem[] }) {
   return (
     <Panel title="Últimas noticias" href="/noticias">
@@ -397,6 +470,17 @@ async function loadNews(): Promise<NewsItem[]> {
   try {
     const { items } = await fetchNews({ limit: 5 });
     return items;
+  } catch {
+    return [];
+  }
+}
+
+async function loadEquities(): Promise<EquitySnapshot[]> {
+  // Only the Merval leader panel — the home is a snapshot, not the full
+  // /acciones board. Wider universe stays behind a click.
+  const leaders = leaderPanel().map((e) => e.symbol);
+  try {
+    return await getEquitiesSnapshot(leaders);
   } catch {
     return [];
   }
