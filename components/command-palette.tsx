@@ -20,6 +20,7 @@ import {
   Gauge,
   LineChart,
   Moon,
+  Newspaper,
   Sun,
   TrendingUp,
 } from "lucide-react";
@@ -259,6 +260,19 @@ export function CommandPalette() {
                 </span>
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                   /macro
+                </span>
+              </Command.Item>
+              <Command.Item
+                value="noticias news economia finanzas ambito lanacion clarin rss"
+                onSelect={() => goto("/noticias")}
+                className={itemClass}
+              >
+                <span className="flex items-center gap-2">
+                  <Newspaper className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Ir a noticias</span>
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  /noticias
                 </span>
               </Command.Item>
             </Command.Group>
