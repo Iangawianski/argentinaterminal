@@ -17,6 +17,7 @@ import {
   Banknote,
   Compass,
   DollarSign,
+  Gauge,
   LineChart,
   Moon,
   Sun,
@@ -244,6 +245,22 @@ export function CommandPalette() {
                   </span>
                 </Command.Item>
               ))}
+            </Command.Group>
+
+            <Command.Group heading="Macro" className={groupHeadingClass}>
+              <Command.Item
+                value="macro bcra reservas badlar tamar ipc inflacion base monetaria"
+                onSelect={() => goto("/macro")}
+                className={itemClass}
+              >
+                <span className="flex items-center gap-2">
+                  <Gauge className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Ir al panel macro (BCRA)</span>
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  /macro
+                </span>
+              </Command.Item>
             </Command.Group>
 
             <Command.Group heading="Navegación" className={groupHeadingClass}>
