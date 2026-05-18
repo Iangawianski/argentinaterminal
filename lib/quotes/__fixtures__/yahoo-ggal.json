@@ -1,0 +1,28 @@
+{
+  "chart": {
+    "result": [
+      {
+        "meta": {
+          "currency": "ARS",
+          "symbol": "GGAL.BA",
+          "regularMarketPrice": 5240.5,
+          "previousClose": 5125.0,
+          "chartPreviousClose": 5125.0,
+          "regularMarketTime": 1747410600,
+          "fiftyTwoWeekHigh": 6210.0,
+          "fiftyTwoWeekLow": 2980.0
+        },
+        "timestamp": [1747393200, 1747393500, 1747393800, 1747394100],
+        "indicators": {
+          "quote": [
+            {
+              "close": [5180.0, 5205.5, 5230.0, 5240.5],
+              "volume": [12500, 18200, 9100, 7600]
+            }
+          ]
+        }
+      }
+    ],
+    "error": null
+  }
+}

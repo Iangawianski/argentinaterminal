@@ -1,0 +1,22 @@
+{
+  "quoteSummary": {
+    "result": [
+      {
+        "price": {
+          "marketCap": { "raw": 3100000000000 },
+          "regularMarketChangePercent": { "raw": 0.0152 }
+        },
+        "summaryDetail": {
+          "trailingPE": { "raw": 32.4 },
+          "dividendYield": { "raw": 0.0048 },
+          "fiftyTwoWeekHigh": { "raw": 220.5 },
+          "fiftyTwoWeekLow": { "raw": 164.1 }
+        },
+        "defaultKeyStatistics": {
+          "forwardPE": { "raw": 29.1 }
+        }
+      }
+    ],
+    "error": null
+  }
+}
