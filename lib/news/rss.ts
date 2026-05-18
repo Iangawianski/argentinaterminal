@@ -244,9 +244,11 @@ function parseDate(s: string | null): string | null {
   return d.toISOString();
 }
 
-const DOLAR_RE = /\b(d[óo]lar|mep|ccl|blue|brecha|cepo)\b/i;
-const MERCADO_RE = /\b(bonos?|acciones?|merval|cedears?|byma|tit[uú]los?|riesgo pa[ií]s)\b/i;
-const POLITICA_RE = /\b(milei|congreso|caputo|gobierno|fmi|opositor|kirchner|larreta)\b/i;
+// Word-prefix patterns: `\b` only on the left side, since `dólar` / `dólares`
+// both qualify and `\b` doesn't sit cleanly next to non-ASCII characters.
+const DOLAR_RE = /\b(d[óo]lar(?:es)?|mep|ccl|blue|brecha|cepo)/i;
+const MERCADO_RE = /\b(bonos?|acciones?|merval|cedears?|byma|tit[uú]los?|riesgo[- ]pa[ií]s)/i;
+const POLITICA_RE = /\b(milei|congreso|caputo|gobierno|fmi|opositor|kirchner|larreta)/i;
 
 function classify(
   title: string,

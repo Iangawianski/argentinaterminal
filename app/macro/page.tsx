@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { InflationChart } from "@/components/inflation-chart";
 import { MacroSparkline } from "@/components/macro-sparkline";
 import {
   BCRA_KEYS,
@@ -7,6 +8,7 @@ import {
   getDefaultBcraProvider,
   type BcraKey,
   type BcraPoint,
+  type BcraSeries,
   type BcraSnapshot,
 } from "@/lib/macro/bcra";
 import { formatNumber } from "@/lib/utils";
@@ -29,6 +31,10 @@ interface MacroRow {
 
 export default async function MacroPage() {
   const provider = getDefaultBcraProvider();
+  const inflationPromise = Promise.all([
+    provider.getSeries("ipcMensual", 365 * 10).catch(() => null),
+    provider.getSeries("ipcInteranual", 365 * 10).catch(() => null),
+  ]);
   const rows: MacroRow[] = await Promise.all(
     BCRA_KEYS.map(async (key) => {
       try {
@@ -117,7 +123,37 @@ export default async function MacroPage() {
         Fuente: BCRA · variables curadas. IPC mensual e interanual son mensuales (oficial INDEC,
         publicado vía BCRA). El resto son diarias.
       </p>
+
+      <h2 className="mt-10 text-sm font-medium uppercase tracking-wider text-[hsl(var(--muted-fg))]">
+        Inflación · IPC INDEC (10 años)
+      </h2>
+      <div className="mt-3">
+        <InflationPanel inflationPromise={inflationPromise} />
+      </div>
     </section>
+  );
+}
+
+type InflationPromise = Promise<[BcraSeries | null, BcraSeries | null]>;
+
+async function InflationPanel({
+  inflationPromise,
+}: {
+  inflationPromise: InflationPromise;
+}) {
+  const [monthly, yearly] = await inflationPromise;
+  if (!monthly && !yearly) {
+    return (
+      <p className="rounded-md border p-4 text-sm text-[hsl(var(--muted-fg))]">
+        No se pudo obtener la serie IPC del BCRA en este momento.
+      </p>
+    );
+  }
+  return (
+    <InflationChart
+      monthly={monthly?.points ?? []}
+      yearly={yearly?.points ?? []}
+    />
   );
 }
 
