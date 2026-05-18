@@ -4,6 +4,7 @@ import {
   AmbitoEmbiProvider,
   EmbiContractError,
   parseAmbitoRiesgoHtml,
+  parseAmbitoRiesgoJson,
 } from "./embi";
 
 // Inline fixture (same as __fixtures__/ambito-riesgo.html) — jsdom env can't read FS.
@@ -63,6 +64,35 @@ describe("parseAmbitoRiesgoHtml", () => {
   it("throws when the label is missing", () => {
     const html = "<p>Algun otro indicador: 1.234</p>";
     expect(() => parseAmbitoRiesgoHtml(html)).toThrow(EmbiContractError);
+  });
+});
+
+describe("parseAmbitoRiesgoJson", () => {
+  it("extracts ultimo + variacion (Argentine decimal comma)", () => {
+    const { valueBps, changePct } = parseAmbitoRiesgoJson({
+      ultimo: "534",
+      fecha: "18-05-2026",
+      variacion: "-0,74%",
+      "class-variacion": "down-green",
+    });
+    expect(valueBps).toBe(534);
+    expect(changePct).toBeCloseTo(-0.74, 6);
+  });
+
+  it("tolerates ultimo as a number and missing variacion", () => {
+    const { valueBps, changePct } = parseAmbitoRiesgoJson({ ultimo: 1234 });
+    expect(valueBps).toBe(1234);
+    expect(changePct).toBeNull();
+  });
+
+  it("rejects non-object payloads", () => {
+    expect(() => parseAmbitoRiesgoJson("nope")).toThrow(EmbiContractError);
+    expect(() => parseAmbitoRiesgoJson(null)).toThrow(EmbiContractError);
+  });
+
+  it("rejects ultimo outside the plausible band", () => {
+    expect(() => parseAmbitoRiesgoJson({ ultimo: "12" })).toThrow(EmbiContractError);
+    expect(() => parseAmbitoRiesgoJson({ ultimo: "999999" })).toThrow(EmbiContractError);
   });
 });
 

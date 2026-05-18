@@ -23,6 +23,23 @@ import { z } from "zod";
  */
 
 export const AMBITO_RIESGO_URL = "https://www.ambito.com/contenidos/riesgo-pais.html";
+/**
+ * Ámbito's static HTML page is a SPA shell — the actual bps value is
+ * hydrated client-side from this JSON endpoint that the page's JS fetches
+ * at load. We hit it directly. The static HTML only contains empty
+ * `<span class="data-ultimo">` placeholders, which is why the old HTML
+ * regex scrape was returning "no plausible bps figure near label" on
+ * every production request.
+ *
+ *   GET https://mercados.ambito.com/riesgopais/variacion-ultimo
+ *   → { "ultimo": "534", "fecha": "18-05-2026",
+ *       "variacion": "-0,74%", "class-variacion": "down-green" }
+ *
+ * `ultimo` is the current bps value as a string. `variacion` is a percent
+ * delta vs. previous close, also a string with comma decimal separator.
+ */
+export const AMBITO_RIESGO_JSON_URL =
+  "https://mercados.ambito.com/riesgopais/variacion-ultimo";
 export const FRED_BASE = "https://api.stlouisfed.org";
 
 const RIESGO_MIN_BPS = 50;
@@ -115,6 +132,42 @@ export function parseAmbitoRiesgoHtml(html: string): {
   return { valueBps, changeBps };
 }
 
+/**
+ * Parses the JSON shape Ámbito's widget endpoint returns. Exposed for tests.
+ *
+ *   { "ultimo": "534", "fecha": "18-05-2026",
+ *     "variacion": "-0,74%", "class-variacion": "down-green" }
+ */
+export function parseAmbitoRiesgoJson(
+  json: unknown,
+): { valueBps: number; changePct: number | null } {
+  if (typeof json !== "object" || json === null) {
+    throw new EmbiContractError("Ámbito JSON: payload is not an object");
+  }
+  const obj = json as Record<string, unknown>;
+  const rawUltimo = obj["ultimo"];
+  if (typeof rawUltimo !== "string" && typeof rawUltimo !== "number") {
+    throw new EmbiContractError("Ámbito JSON: missing 'ultimo' field");
+  }
+  const ultimoStr =
+    typeof rawUltimo === "number" ? String(rawUltimo) : rawUltimo.trim();
+  const valueBps = Number(ultimoStr.replace(/[^\d-]/g, ""));
+  if (!Number.isFinite(valueBps) || valueBps < RIESGO_MIN_BPS || valueBps > RIESGO_MAX_BPS) {
+    throw new EmbiContractError(
+      `Ámbito JSON: 'ultimo'=${ultimoStr} outside plausible band [${RIESGO_MIN_BPS}, ${RIESGO_MAX_BPS}]`,
+    );
+  }
+  let changePct: number | null = null;
+  const rawVar = obj["variacion"];
+  if (typeof rawVar === "string") {
+    // "−0,74%" / "-0,74%" / "+1,2%" — Argentine decimal comma.
+    const cleaned = rawVar.replace("−", "-").replace(/%/g, "").replace(/,/g, ".").trim();
+    const parsed = Number(cleaned);
+    if (Number.isFinite(parsed)) changePct = parsed;
+  }
+  return { valueBps, changePct };
+}
+
 export class AmbitoEmbiProvider {
   readonly name = "ambito";
   private readonly fetchImpl: typeof fetch;
@@ -134,16 +187,55 @@ export class AmbitoEmbiProvider {
 
   async getRiesgoPais(): Promise<RiesgoPais> {
     try {
-      return await this.fetchFromAmbito();
-    } catch (primaryErr) {
+      return await this.fetchFromAmbitoJson();
+    } catch (jsonErr) {
       try {
-        return await this.fetchFromFredFallback();
-      } catch {
-        const message =
-          primaryErr instanceof Error ? primaryErr.message : "Ámbito unavailable";
-        throw new Error(`EMBI sources unavailable: ${message}`);
+        return await this.fetchFromAmbito();
+      } catch (htmlErr) {
+        try {
+          return await this.fetchFromFredFallback();
+        } catch {
+          const message =
+            jsonErr instanceof Error
+              ? jsonErr.message
+              : htmlErr instanceof Error
+                ? htmlErr.message
+                : "Ámbito unavailable";
+          throw new Error(`EMBI sources unavailable: ${message}`);
+        }
       }
     }
+  }
+
+  /**
+   * Calls the JSON endpoint that Ámbito's own widget uses. Preferred
+   * because the static HTML page no longer carries the inline value.
+   */
+  private async fetchFromAmbitoJson(): Promise<RiesgoPais> {
+    const res = await this.fetchImpl(AMBITO_RIESGO_JSON_URL, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "application/json,*/*;q=0.5",
+      },
+      next: { revalidate: this.cacheTtlSeconds },
+    } as RequestInit & { next?: { revalidate?: number } });
+    if (!res.ok) {
+      throw new EmbiContractError(`Ámbito JSON HTTP ${res.status}`);
+    }
+    const json = (await res.json()) as unknown;
+    const { valueBps, changePct } = parseAmbitoRiesgoJson(json);
+    return {
+      valueBps,
+      // Ámbito's JSON gives percent change, not absolute bps. We could
+      // derive bps from `valueBps * changePct / (100 - changePct)` but
+      // small rounding drifts make it noisy, so we just surface the pct
+      // and let the UI render either.
+      changeBps: null,
+      changePct,
+      source: "ambito",
+      asOf: new Date().toISOString(),
+      note: "Ámbito mercados (JSON widget endpoint)",
+    };
   }
 
   private async fetchFromAmbito(): Promise<RiesgoPais> {
