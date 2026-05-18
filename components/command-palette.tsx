@@ -15,9 +15,11 @@ import {
 import {
   Activity,
   Banknote,
+  BarChart3,
   Compass,
   DollarSign,
   Gauge,
+  Grid3x3,
   LineChart,
   Moon,
   Newspaper,
@@ -26,6 +28,7 @@ import {
 } from "lucide-react";
 
 import { BONDS } from "@/lib/bonds/cashflows";
+import { INDEX_CATALOG } from "@/lib/equities/indices";
 import { FX_KEYS, FX_LABELS, type FxKey } from "@/lib/fx";
 import { INSTRUMENTS } from "@/lib/instruments";
 
@@ -243,6 +246,51 @@ export function CommandPalette() {
                   </span>
                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                     {bond.law === "AR" ? "Ley AR" : "Ley NY"}
+                  </span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+
+            <Command.Group heading="Acciones" className={groupHeadingClass}>
+              <Command.Item
+                value="acciones byma stocks merval panel lider"
+                onSelect={() => goto("/acciones")}
+                className={itemClass}
+              >
+                <span className="flex items-center gap-2">
+                  <Grid3x3 className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Ir al panel de acciones</span>
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  /acciones
+                </span>
+              </Command.Item>
+              <Command.Item
+                value="indices merval argentina argt sparkline benchmark"
+                onSelect={() => goto("/indices")}
+                className={itemClass}
+              >
+                <span className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span>Ir al panel de índices</span>
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  /indices
+                </span>
+              </Command.Item>
+              {INDEX_CATALOG.map((idx) => (
+                <Command.Item
+                  key={idx.symbol}
+                  value={`indice ${idx.symbol} ${idx.name}`}
+                  onSelect={() => goto(`/indices#${idx.symbol.toLowerCase()}`)}
+                  className={itemClass}
+                >
+                  <span className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    <span>Ver {idx.name}</span>
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {idx.currency === "POINTS" ? "puntos" : idx.currency}
                   </span>
                 </Command.Item>
               ))}

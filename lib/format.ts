@@ -11,6 +11,16 @@ const PCT = new Intl.NumberFormat("es-AR", {
   signDisplay: "exceptZero",
 });
 
+const NUM2 = new Intl.NumberFormat("es-AR", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 2,
+});
+
+const NUM4 = new Intl.NumberFormat("es-AR", {
+  maximumFractionDigits: 4,
+  minimumFractionDigits: 2,
+});
+
 const DATETIME = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "short",
   timeStyle: "medium",
@@ -23,6 +33,10 @@ export function formatArs(value: number): string {
 
 export function formatPct(fraction: number): string {
   return PCT.format(fraction);
+}
+
+export function formatNumber(value: number, mode: "default" | "precise" = "default"): string {
+  return (mode === "precise" ? NUM4 : NUM2).format(value);
 }
 
 export function formatTimestamp(ts: number): string {
